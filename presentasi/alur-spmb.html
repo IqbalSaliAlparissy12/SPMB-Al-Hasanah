@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <title>Alur SPMB Al-Hasanah</title>
+  <style>
+    @page { size: A4 landscape; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", "Plus Jakarta Sans", sans-serif;
+      color: #0f172a;
+      background: #fff;
+    }
+    .slide {
+      width: 297mm;
+      height: 210mm;
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+      padding: 16mm 18mm 14mm;
+      background: #f8fafc;
+    }
+    .slide:last-child { page-break-after: auto; }
+    .kicker {
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #0369a1;
+      font-weight: 700;
+      margin: 0 0 8px;
+    }
+    h1 { font-size: 40px; line-height: 1.15; margin: 0 0 10px; color: #0c4a6e; }
+    h2 { font-size: 32px; line-height: 1.2; margin: 0 0 8px; color: #0c4a6e; }
+    .lead { font-size: 18px; color: #334155; margin: 0; max-width: 230mm; }
+    .bar {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 8mm;
+      background: #0284c7;
+    }
+    .foot {
+      position: absolute;
+      left: 18mm; right: 18mm; bottom: 8mm;
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .grid { display: grid; gap: 8mm; margin-top: 10mm; }
+    .g3 { grid-template-columns: 1fr 1fr 1fr; }
+    .g2 { grid-template-columns: 1fr 1fr; }
+    .card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 7mm 7mm 6mm;
+    }
+    .card h3 { margin: 0 0 4px; font-size: 18px; color: #0f172a; }
+    .card p, .card li { font-size: 14.5px; line-height: 1.45; color: #334155; margin: 0; }
+    .card ul { margin: 6px 0 0; padding-left: 18px; }
+    .card li { margin: 3px 0; }
+    .num {
+      display: inline-flex;
+      width: 28px; height: 28px;
+      border-radius: 999px;
+      background: #0284c7;
+      color: #fff;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      margin-right: 8px;
+    }
+    .steps { display: flex; gap: 4mm; margin-top: 12mm; }
+    .step {
+      flex: 1;
+      background: #fff;
+      border-top: 6px solid #0284c7;
+      border-radius: 12px;
+      padding: 5mm 4mm;
+      min-height: 78mm;
+    }
+    .step b { display: block; font-size: 15px; margin-bottom: 6px; color: #0c4a6e; }
+    .step span { display: block; font-size: 13px; line-height: 1.4; color: #334155; }
+    .cover {
+      background: linear-gradient(145deg, #0369a1 0%, #0c4a6e 55%, #082f49 100%);
+      color: #fff;
+    }
+    .cover h1 { color: #fff; font-size: 52px; }
+    .cover .kicker { color: #bae6fd; }
+    .cover .lead { color: #e0f2fe; font-size: 20px; }
+    .cover .foot { color: #bae6fd; }
+    .pill {
+      display: inline-block;
+      margin-top: 10mm;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 14px;
+    }
+    .note {
+      margin-top: 8mm;
+      background: #ecfeff;
+      border: 1px solid #a5f3fc;
+      border-radius: 12px;
+      padding: 4mm 5mm;
+      font-size: 14px;
+      color: #155e75;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: #e0f2fe;
+      color: #0369a1;
+      border-radius: 999px;
+      padding: 3px 8px;
+      margin-bottom: 6px;
+    }
+    .tag.warn { background: #fef3c7; color: #92400e; }
+  </style>
+</head>
+<body>
+  <section class="slide cover">
+    <p class="kicker">SPMB Online · Al-Hasanah Bengkulu</p>
+    <h1>Alur pendaftaran<br>dari orang tua sampai rapor</h1>
+    <p class="lead">Enam tahap di portal wali, diatur oleh TU dan Guru. Data calon siswa tersimpan di SPMB, lalu masuk rapor setelah dinyatakan lulus.</p>
+    <div class="pill">Portal orang tua: /wali &nbsp;·&nbsp; Panel staf: akun Amanah</div>
+    <div class="foot"><span>Presentasi alur SPMB</span><span>1</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="bar"></div>
+    <p class="kicker">Siapa memakai</p>
+    <h2>Tiga pintu, satu alur</h2>
+    <div class="grid g3">
+      <article class="card">
+        <span class="tag">Orang tua</span>
+        <h3>Portal /wali</h3>
+        <p>Daftar, bayar, isi data, unduh kartu dan surat, lalu unggah dokumen. Username dan password yang sama dipakai lagi di aplikasi rapor setelah pendaftaran selesai.</p>
+      </article>
+      <article class="card">
+        <span class="tag">TU</span>
+        <h3>Panel SPMB</h3>
+        <p>Mengatur persyaratan, kelas, tahap yang dibuka, mata pelajaran tes, hasil tes, surat pernyataan, dan daftar dokumen fisik.</p>
+      </article>
+      <article class="card">
+        <span class="tag">Guru</span>
+        <h3>Menu Tes</h3>
+        <p>Melihat daftar calon siswa, lalu mengisi hasil tes. Status lulus membuka tahap surat keputusan bagi orang tua.</p>
+      </article>
+    </div>
+    <div class="foot"><span>SPMB Al-Hasanah</span><span>2</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="bar"></div>
+    <p class="kicker">Ringkasan</p>
+    <h2>Enam tahap orang tua</h2>
+    <div class="steps">
+      <div class="step"><b>1. Registrasi</b><span>Akun wali aktif. Persyaratan dari TU tampil di bawah status.</span></div>
+      <div class="step"><b>2. Pembayaran</b><span>Tagihan pendaftaran. Tahap berikutnya terbuka setelah lunas.</span></div>
+      <div class="step"><b>3. Isi data</b><span>Data siswa dan orang tua. Selesai menyimpan, masuk tahap ujian.</span></div>
+      <div class="step"><b>4. Ujian</b><span>Kartu ujian dan unduh surat pernyataan. Hasil tes diisi Guru atau TU.</span></div>
+      <div class="step"><b>5. Keputusan</b><span>Hanya jika lulus. Status sudah lulus dan teks surat dari TU.</span></div>
+      <div class="step"><b>6. Dokumen</b><span>Unggah berkas yang daftarnya diatur TU. Maksimal 2 MB per berkas.</span></div>
+    </div>
+    <div class="foot"><span>SPMB Al-Hasanah</span><span>3</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="bar"></div>
+    <p class="kicker">Tahap 1</p>
+    <h2>Registrasi akun wali</h2>
+    <div class="grid g2">
+      <article class="card">
+        <h3>Yang diisi orang tua</h3>
+        <ul>
+          <li>Lembaga tujuan, dari data sekolah di rapor.</li>
+          <li>Kelas SPMB, misalnya 1, 2, atau 3. Bukan rombel rapor.</li>
+          <li>Status alumni, nama wali, nama calon siswa, WhatsApp.</li>
+          <li>Username dan password buatan sendiri.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Yang diatur TU</h3>
+        <ul>
+          <li>Menu Kelas SPMB: nama kelas per lembaga, urutan, tampil atau disembunyikan.</li>
+          <li>Menu Persyaratan: judul dan isi dengan alat tulis seperti Word.</li>
+          <li>Teks yang dicentang tampil di bawah status registrasi.</li>
+        </ul>
+      </article>
+    </div>
+    <div class="foot"><span>SPMB Al-Hasanah</span><span>4</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="bar"></div>
+    <p class="kicker">Tahap 2 dan 3</p>
+    <h2>Pembayaran, lalu isi data</h2>
+    <div class="grid g2">
+      <article class="card">
+        <span class="num">2</span>
+        <h3 style="display:inline">Pembayaran</h3>
+        <ul>
+          <li>Orang tua melihat tagihan pendaftaran.</li>
+          <li>Setelah lunas, formulir data dan unggah foto bisa dilanjutkan.</li>
+          <li>TU dapat membuka atau menutup tahap ini untuk unitnya.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <span class="num">3</span>
+        <h3 style="display:inline">Isi data</h3>
+        <ul>
+          <li>Data calon siswa, orang tua, dan alamat.</li>
+          <li>Murid lama dapat dicocokkan lewat NISN dari rapor.</li>
+          <li>Simpan formulir membuka tahap ujian, belum membuka kelulusan.</li>
+        </ul>
+      </article>
+    </div>
+    <div class="foot"><span>SPMB Al-Hasanah</span><span>5</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="bar"></div>
+    <p class="kicker">Tahap 4</p>
+    <h2>Ujian dan wawancara</h2>
+    <div class="grid g2">
+      <article class="card">
+        <h3>Di portal orang tua</h3>
+        <ul>
+          <li>Unggah foto 3x4 untuk kartu ujian, lalu cetak kartu.</li>
+          <li>Ada dokumen wajib diunduh: surat pernyataan yang diunggah TU.</li>
+          <li>Tombol lanjut ke tahap 5 hanya muncul setelah dinyatakan lulus.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Di panel Guru dan TU</h3>
+        <ul>
+          <li>Menu Mapel Tes: TU menambah mata pelajaran yang dinilai.</li>
+          <li>Menu Tes: tabel calon siswa, lalu Tambah hasil tes.</li>
+          <li>Nilai observasi, wawancara, atau mapel lain, plus status lulus atau tidak.</li>
+        </ul>
+      </article>
+    </div>
+    <p class="note">Tidak lulus: orang tua tetap di tahap ujian. Lulus: tahap 5 terbuka dan data siswa dapat dikirim ke rapor.</p>
+    <div class="foot"><span>SPMB Al-Hasanah</span><span>6</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="bar"></div>
+    <p class="kicker">Tahap 5</p>
+    <h2>Surat keputusan dan biaya masuk</h2>
+    <div class="grid g2">
+      <article class="card">
+        <h3>Yang dilihat orang tua</h3>
+        <ul>
+          <li>Status besar: Sudah lulus.</li>
+          <li>Di bawah status, teks surat yang ditulis TU.</li>
+          <li>Tombol lanjut untuk mengunggah dokumen fisik.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Yang diatur TU</h3>
+        <ul>
+          <li>Menu Surat Pernyataan, editor sama seperti persyaratan.</li>
+          <li>Centang tampilkan agar teks muncul di tahap 5.</li>
+          <li>Unggah berkas PDF atau Word. Berkas itu yang diunduh orang tua di tahap ujian.</li>
+        </ul>
+      </article>
+    </div>
+    <div class="foot"><span>SPMB Al-Hasanah</span><span>7</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="bar"></div>
+    <p class="kicker">Tahap 6</p>
+    <h2>Unggah dokumen fisik</h2>
+    <div class="grid g2">
+      <article class="card">
+        <h3>Daftar dari TU</h3>
+        <ul>
+          <li>Menu Dokumen di panel TU.</li>
+          <li>Awalnya ada Kartu Keluarga dan Akta Kelahiran.</li>
+          <li>TU dapat menambah, mengubah, menyembunyikan, atau menghapus jenis berkas.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Aturan unggah</h3>
+        <ul>
+          <li>Setiap berkas maksimal 2 MB.</li>
+          <li>Semua dokumen yang ditampilkan wajib diunggah.</li>
+          <li>Baru setelah itu pendaftaran dapat diselesaikan.</li>
+        </ul>
+      </article>
+    </div>
+    <p class="note">Rencana berikutnya: orang tua yang dokumennya sudah lengkap, saat login di /wali, dibuka ke aplikasi rapor. Yang belum lengkap tetap masuk portal SPMB.</p>
+    <div class="foot"><span>SPMB Al-Hasanah</span><span>8</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="bar"></div>
+    <p class="kicker">Panel</p>
+    <h2>Yang dikerjakan staf</h2>
+    <div class="grid g2">
+      <article class="card">
+        <span class="tag">TU</span>
+        <h3>Pengatur isi dan tahap</h3>
+        <ul>
+          <li>Persyaratan, surat pernyataan, dan dokumen fisik.</li>
+          <li>Kelas SPMB dan buka/tutup enam tahap.</li>
+          <li>Mata pelajaran tes dan hasil tes.</li>
+          <li>Memindah pendaftar ke tahap tertentu bila perlu.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <span class="tag">Guru</span>
+        <h3>Penilai tes</h3>
+        <ul>
+          <li>Melihat calon siswa di lembaganya yang sudah mengirim formulir.</li>
+          <li>Mengisi nilai sesuai mata pelajaran dari TU.</li>
+          <li>Menetapkan lulus atau tidak lulus.</li>
+        </ul>
+      </article>
+    </div>
+    <div class="foot"><span>SPMB Al-Hasanah · akhir</span><span>9</span></div>
+  </section>
+</body>
+</html>

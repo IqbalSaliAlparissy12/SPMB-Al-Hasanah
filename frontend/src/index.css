@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.tab-btn.active {
+  border-color: #0284c7;
+  background-color: #f0f9ff;
+  color: #0369a1;
+}
+
+.rich-editor p,
+.rich-body p {
+  margin: 0.35rem 0;
+}
+.rich-editor h2,
+.rich-body h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0.6rem 0 0.25rem;
+}
+.rich-editor h3,
+.rich-body h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0.5rem 0 0.2rem;
+}
+.rich-editor ul,
+.rich-body ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0.35rem 0;
+}
+.rich-editor ol,
+.rich-body ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin: 0.35rem 0;
+}
+.rich-editor li,
+.rich-body li {
+  margin: 0.15rem 0;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f1f5f9;
+  color: #1e293b;
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.exam-card {
+  width: 360px;
+  min-height: 520px;
+  border: 1px solid #94a3b8;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+}
+
+.exam-deco {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  background: linear-gradient(135deg, #9fd6d8 0%, #d7eef0 55%, transparent 56%);
+  opacity: 0.85;
+}
+
+.exam-deco-tl {
+  top: -30px;
+  left: -40px;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.exam-deco-br {
+  right: -50px;
+  bottom: -20px;
+  background: linear-gradient(225deg, #b9c6d3 0%, #e8eef3 60%, transparent 61%);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.exam-photo-slot {
+  width: 160px;
+  height: 160px;
+  border: 3px solid #1e293b;
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+  .no-print,
+  header,
+  .no-print * {
+    display: none !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .print-stage {
+    background: white !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+  #exam-card {
+    box-shadow: none;
+    margin: 0 auto;
+  }
+}
