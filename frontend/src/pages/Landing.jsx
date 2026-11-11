@@ -34,6 +34,7 @@ export default function Landing({ showToast }) {
   const [loginError, setLoginError] = useState("");
   const [schools, setSchools] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [fee, setFee] = useState(null);
   const [schoolError, setSchoolError] = useState("");
 
   useEffect(() => {
@@ -50,15 +51,43 @@ export default function Landing({ showToast }) {
   }, []);
 
   useEffect(() => {
-    if (!reg.schoolId) {
-      setClasses([]);
-      return;
-    }
+    if (!reg.schoolId) return undefined;
+    let active = true;
     api
       .get(`/schools/${reg.schoolId}/classes`)
-      .then(({ data }) => setClasses(data.classes || []))
-      .catch(() => setClasses([]));
+      .then(({ data }) => {
+        if (active) setClasses(data.classes || []);
+      })
+      .catch(() => {
+        if (active) setClasses([]);
+      });
+    return () => {
+      active = false;
+    };
   }, [reg.schoolId]);
+
+  const feeKey = `${reg.schoolId}:${reg.kelasId}:${reg.isAlumni}`;
+  const selectedFee = fee?.key === feeKey ? fee : null;
+
+  useEffect(() => {
+    if (!reg.schoolId || !reg.kelasId || !["true", "false"].includes(reg.isAlumni)) {
+      return undefined;
+    }
+    let active = true;
+    api
+      .get(`/schools/${reg.schoolId}/registration-fee`, {
+        params: { kelasId: reg.kelasId, isAlumni: reg.isAlumni },
+      })
+      .then(({ data }) => {
+        if (active) setFee({ key: feeKey, ...data });
+      })
+      .catch(() => {
+        if (active) setFee({ key: feeKey, amount: null, configured: false });
+      });
+    return () => {
+      active = false;
+    };
+  }, [feeKey, reg.schoolId, reg.kelasId, reg.isAlumni]);
 
   const errors = useMemo(() => {
     const next = {};
@@ -87,6 +116,7 @@ export default function Landing({ showToast }) {
     reg.username &&
     reg.password &&
     reg.confirm &&
+    selectedFee?.configured &&
     Object.keys(errors).length === 0;
 
   const handleRegister = async (e) => {
@@ -178,7 +208,10 @@ export default function Landing({ showToast }) {
               required
               className={inputClass}
               value={reg.schoolId}
-              onChange={(e) => setReg({ ...reg, schoolId: e.target.value, kelasId: "" })}
+              onChange={(e) => {
+                setClasses([]);
+                setReg({ ...reg, schoolId: e.target.value, kelasId: "" });
+              }}
             >
               <option value="">Pilih Lembaga Sekolah</option>
               {schools.map((school) => (
@@ -219,6 +252,15 @@ export default function Landing({ showToast }) {
               <option value="true">Ya, alumni Al Hasanah</option>
             </select>
           </Field>
+          {selectedFee?.configured ? (
+            <p className="text-[11px] text-sky-800 font-semibold">
+              Biaya formulir tahun ajaran {selectedFee.academicYear}: {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(selectedFee.amount)}
+            </p>
+          ) : reg.schoolId && reg.kelasId && reg.isAlumni !== "" && selectedFee ? (
+            <p className="text-[10px] text-amber-700">
+              {selectedFee.reason || "Biaya formulir belum tersedia. Periksa pemetaan paket dan nominal grup biaya pada Setup Tahunan."}
+            </p>
+          ) : null}
           <Field label="Nama Orang Tua / Wali *">
             <input required className={inputClass} value={reg.name} onChange={(e) => setReg({ ...reg, name: e.target.value })} placeholder="Nama lengkap wali" />
           </Field>
@@ -244,7 +286,7 @@ export default function Landing({ showToast }) {
               placeholder="Buat username sendiri"
             />
             <p className="text-[10px] text-slate-500 mt-1">
-              Username dan password ini untuk login PPDB dan aplikasi rapor/wali setelah anak lulus.
+              Username dan password ini untuk login SPMB dan aplikasi rapor/wali setelah anak lulus.
             </p>
           </Field>
           <Field label="Password *" error={errors.password}>

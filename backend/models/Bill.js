@@ -12,7 +12,7 @@ const Bill = db.define(
     amount: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 350000,
+      defaultValue: 0,
     },
     status: {
       type: DataTypes.ENUM("UNPAID", "PAID", "EXPIRED"),
@@ -22,6 +22,7 @@ const Bill = db.define(
     vaBni: DataTypes.STRING,
     vaBca: DataTypes.STRING,
     vaMandiri: DataTypes.STRING,
+    bniTrxId: DataTypes.STRING,
     expiresAt: DataTypes.DATE,
     paidAt: DataTypes.DATE,
   },

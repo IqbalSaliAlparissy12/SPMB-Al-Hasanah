@@ -40,6 +40,35 @@ export default function Dashboard({ showToast }) {
       .catch(() => {});
   }, [applicant?.schoolId]);
 
+  useEffect(() => {
+    if (current !== 5 || applicant?.announcementStatus !== "LULUS") return undefined;
+    let active = true;
+    const refreshAdmissionDetails = () => {
+      api
+        .get("/me")
+        .then(({ data }) => {
+          if (active) applyPayload(data);
+        })
+        .catch((err) => {
+          if (active) {
+            showToast?.("Gagal memuat paket", err.response?.data?.message || "Tidak dapat memperbarui detail biaya masuk.");
+          }
+        });
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refreshAdmissionDetails();
+    };
+
+    refreshAdmissionDetails();
+    window.addEventListener("focus", refreshAdmissionDetails);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refreshAdmissionDetails);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [current, applicant?.announcementStatus, applyPayload, showToast]);
+
   const goToStep = async (step) => {
     const openingDocs = step === 6 && applicant?.announcementStatus === "LULUS" && max >= 5;
     if (step > max && !openingDocs) {
@@ -77,7 +106,7 @@ export default function Dashboard({ showToast }) {
               <i className="fas fa-graduation-cap" />
             </div>
             <div>
-              <h1 className="font-bold text-slate-800 text-base">PPDB Online Terpadu</h1>
+              <h1 className="font-bold text-slate-800 text-base">SPMB Online Terpadu</h1>
               <p className="text-xs text-slate-500">Al-Hasanah Bengkulu</p>
             </div>
           </div>
@@ -135,7 +164,7 @@ export default function Dashboard({ showToast }) {
 
         {stageOpen[current] !== false && current === 1 && <StepRegister applicant={applicant} onNext={() => goToStep(2)} />}
         {stageOpen[current] !== false && current === 2 && (
-          <StepPayment bill={bill} applyPayload={applyPayload} showToast={showToast} onPaidNext={() => goToStep(3)} />
+          <StepPayment applicant={applicant} bill={bill} applyPayload={applyPayload} showToast={showToast} onPaidNext={() => goToStep(3)} />
         )}
         {stageOpen[current] !== false && current === 3 && <StepForm applicant={applicant} applyPayload={applyPayload} showToast={showToast} />}
         {stageOpen[current] !== false && current === 4 && (

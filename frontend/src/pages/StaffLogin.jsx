@@ -38,7 +38,7 @@ export default function StaffLogin({ showToast }) {
             <i className="fas fa-user-tie" />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-slate-800 tracking-wider uppercase">PPDB Al-Hasanah</h2>
+            <h2 className="text-xl font-extrabold text-slate-800 tracking-wider uppercase">SPMB Al-Hasanah</h2>
             <p className="text-xs text-slate-500 mt-1">Login TU, Guru, dan Kepala Sekolah (akun Amanah)</p>
           </div>
         </div>

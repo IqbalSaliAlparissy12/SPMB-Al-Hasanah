@@ -1,5 +1,5 @@
 import { Applicant, DocRequirement, DocumentFile } from "../models/index.js";
-import { loadDashboard } from "./Auth.Controller.js";
+import { loadDashboard, raporUrlFor } from "./Auth.Controller.js";
 import { ensureDocRequirements } from "./DocRequirement.Controller.js";
 
 export async function uploadDocument(req, res) {
@@ -45,8 +45,10 @@ export async function finishRegistration(req, res) {
       return res.status(400).json({ message: `Unggah dulu: ${missing.map((item) => item.name).join(", ")}.` });
     }
     await applicant.update({ currentStep: 6, maxUnlockedStep: 6 });
+    const raporUrl = await raporUrlFor(req.user);
     return res.json({
       message: "Pendaftaran selesai. Panitia akan meninjau dokumen Anda.",
+      raporUrl,
       ...(await loadDashboard(req.user)),
     });
   } catch (error) {

@@ -1,5 +1,4 @@
 import { Applicant, Bill } from "../models/index.js";
-import { generateExamNumber } from "../utils/va.js";
 import { loadDashboard } from "./Auth.Controller.js";
 import { pullByNisn } from "../services/amanahSync.js";
 import { getAmanahSchoolById } from "../services/amanahSchools.js";
@@ -99,7 +98,6 @@ export async function updateForm(req, res) {
       city: req.body.city || null,
       province: req.body.province || null,
       formSubmittedAt: new Date(),
-      examNumber: applicant.examNumber || generateExamNumber(),
       currentStep: Math.max(applicant.currentStep, 4),
       maxUnlockedStep: Math.max(applicant.maxUnlockedStep, 4),
     });

@@ -30,6 +30,8 @@ const Applicant = db.define(
     schoolId: DataTypes.INTEGER,
     kelasId: DataTypes.INTEGER,
     kelasName: DataTypes.STRING,
+    paymentPackageId: DataTypes.INTEGER,
+    waveId: DataTypes.INTEGER,
     isAlumni: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -60,7 +62,7 @@ const Applicant = db.define(
     examDate: DataTypes.STRING,
     examLocation: DataTypes.STRING,
     announcementStatus: {
-      type: DataTypes.ENUM("MENUNGGU", "LULUS", "TIDAK_LULUS"),
+      type: DataTypes.ENUM("MENUNGGU", "LULUS", "TIDAK_LULUS", "LULUS_CADANGAN", "MENGUNDURKAN_DIRI"),
       defaultValue: "MENUNGGU",
     },
     amanahSiswaId: DataTypes.INTEGER,

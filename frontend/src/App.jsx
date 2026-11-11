@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Toast from "./components/Toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -37,7 +37,7 @@ function PublicOnly({ children, portal }) {
 
 function AppRoutes() {
   const [toast, setToast] = useState(null);
-  const showToast = (title, msg) => setToast({ title, msg });
+  const showToast = useCallback((title, msg) => setToast({ title, msg }), []);
 
   return (
     <>

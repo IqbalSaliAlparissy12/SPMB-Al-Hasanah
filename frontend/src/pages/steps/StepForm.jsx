@@ -176,35 +176,6 @@ export default function StepForm({ applicant, applyPayload, showToast }) {
                 <input className={inputClass} value={form.nisn} onChange={set("nisn")} />
               </div>
             )}
-            <div className="md:col-span-2 border border-dashed border-slate-300 rounded-xl p-3 flex items-center gap-4">
-              <div className="w-[72px] h-[96px] bg-slate-100 border border-slate-300 overflow-hidden shrink-0">
-                {applicant?.photoPath ? (
-                  <img src={applicant.photoPath} alt="Foto siswa" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full grid place-items-center text-[10px] text-slate-400">3x4</div>
-                )}
-              </div>
-              <div>
-                <p className="font-semibold text-slate-700 mb-1">Foto calon siswa (3x4)</p>
-                <FilePickButton
-                  accept="image/*"
-                  icon="fa-camera"
-                  label={applicant?.photoPath ? "Ganti foto" : "Unggah foto"}
-                  fileName={applicant?.photoPath ? "Foto sudah terpasang" : ""}
-                  onFile={async (file) => {
-                    const body = new FormData();
-                    body.append("file", file);
-                    try {
-                      const { data } = await api.post("/applicants/me/photo", body);
-                      applyPayload(data);
-                      showToast("Foto tersimpan", data.message);
-                    } catch (err) {
-                      showToast("Gagal", err.response?.data?.message || "Unggah foto gagal.");
-                    }
-                  }}
-                />
-              </div>
-            </div>
           </div>
         )}
 

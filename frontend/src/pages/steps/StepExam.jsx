@@ -6,6 +6,11 @@ import FilePickButton from "../../components/FilePickButton";
 export default function StepExam({ applicant, applyPayload, showToast, onNext }) {
   const [busy, setBusy] = useState(false);
   const [documents, setDocuments] = useState([]);
+  const examStatusMessages = {
+    TIDAK_LULUS: "Status hasil tes: Tidak Lulus.",
+    LULUS_CADANGAN: "Status hasil tes: Lulus Cadangan. Tahap berikutnya terbuka setelah dinyatakan Lulus.",
+    MENGUNDURKAN_DIRI: "Status hasil tes: Mengundurkan Diri.",
+  };
 
   useEffect(() => {
     api
@@ -93,7 +98,7 @@ export default function StepExam({ applicant, applyPayload, showToast, onNext })
             </button>
           ) : (
             <p className="text-slate-600 self-center">
-              Menunggu hasil tes dari Guru atau TU. Tahap berikutnya terbuka setelah dinyatakan lulus.
+              {examStatusMessages[applicant?.announcementStatus] || "Menunggu hasil tes dari Guru atau TU. Tahap berikutnya terbuka setelah dinyatakan lulus."}
             </p>
           )}
         </div>

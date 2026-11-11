@@ -14,20 +14,32 @@ import {
   updateClass,
 } from "../controllers/SpmbClass.Controller.js";
 import {
+  createWave,
+  deleteWave,
+  listWaves,
+  updateWave,
+} from "../controllers/SpmbWave.Controller.js";
+import {
   lookupNisn,
   setStep,
   simulateAnnouncement,
   updateForm,
   uploadPhoto,
 } from "../controllers/Applicant.Controller.js";
-import { selectMethod, simulatePay } from "../controllers/Bill.Controller.js";
+import { bniNotify, checkBniStatus, selectMethod, simulatePay } from "../controllers/Bill.Controller.js";
+import { checkAdmissionPayment, startAdmissionPayment } from "../controllers/AdmissionPayment.Controller.js";
 import { finishRegistration, uploadDocument } from "../controllers/Document.Controller.js";
 import {
   controlApplicant,
+  getApplicantFeeDetails,
+  getExamSchedule,
   listApplicants,
   listPublishedStages,
   listStages,
   updateStage,
+  saveExamSchedule,
+  saveApplicantFeeDetails,
+  recordAdmissionPayment,
 } from "../controllers/Tu.Controller.js";
 import { pushMe, status as syncStatus } from "../controllers/Sync.Controller.js";
 import {
@@ -60,6 +72,22 @@ import {
   saveExamResult,
   updateSubject,
 } from "../controllers/Exam.Controller.js";
+import {
+  createFeeGroup,
+  createFeeItem,
+  createFeePackage,
+  deleteFeeGroup,
+  deleteFeeItem,
+  deleteFeePackage,
+  generateAnnualFeeSetup,
+  getFeeSetup,
+  publicRegistrationFee,
+  saveAnnualFeeAmounts,
+  updateFeeGroup,
+  updateFeeItem,
+  updateFeePackage,
+} from "../controllers/FeeSetup.Controller.js";
+import { getRegistrationPrefix, saveRegistrationPrefix } from "../controllers/SpmbSchoolConfig.Controller.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadDir = path.join(__dirname, "..", "uploads");
@@ -94,15 +122,39 @@ const router = express.Router();
 
 router.get("/schools", listSchools);
 router.get("/schools/:schoolId/classes", listPublishedBySchool);
+router.get("/schools/:schoolId/registration-fee", publicRegistrationFee);
+router.get("/tu/fee-setup", verifyJWT, requireTu, getFeeSetup);
+router.get("/tu/registration-prefix", verifyJWT, requireTu, getRegistrationPrefix);
+router.put("/tu/registration-prefix", verifyJWT, requireTu, saveRegistrationPrefix);
+router.post("/tu/fee-items", verifyJWT, requireTu, createFeeItem);
+router.patch("/tu/fee-items/:id", verifyJWT, requireTu, updateFeeItem);
+router.delete("/tu/fee-items/:id", verifyJWT, requireTu, deleteFeeItem);
+router.post("/tu/fee-groups", verifyJWT, requireTu, createFeeGroup);
+router.patch("/tu/fee-groups/:id", verifyJWT, requireTu, updateFeeGroup);
+router.delete("/tu/fee-groups/:id", verifyJWT, requireTu, deleteFeeGroup);
+router.post("/tu/fee-packages", verifyJWT, requireTu, createFeePackage);
+router.patch("/tu/fee-packages/:id", verifyJWT, requireTu, updateFeePackage);
+router.delete("/tu/fee-packages/:id", verifyJWT, requireTu, deleteFeePackage);
+router.post("/tu/annual-fees/generate", verifyJWT, requireTu, generateAnnualFeeSetup);
+router.put("/tu/annual-fees/:id", verifyJWT, requireTu, saveAnnualFeeAmounts);
 router.get("/schools/:schoolId/stages", listPublishedStages);
 router.get("/spmb-stages", verifyJWT, requireTu, listStages);
 router.patch("/spmb-stages/:step", verifyJWT, requireTu, updateStage);
 router.get("/tu/applicants", verifyJWT, requireTu, listApplicants);
+router.get("/tu/applicants/:id/fee-details", verifyJWT, requireTu, getApplicantFeeDetails);
+router.put("/tu/applicants/:id/fee-details", verifyJWT, requireTu, saveApplicantFeeDetails);
+router.post("/tu/applicants/:id/admission-payments", verifyJWT, requireTu, recordAdmissionPayment);
 router.patch("/tu/applicants/:id", verifyJWT, requireTu, controlApplicant);
+router.get("/tu/exam-schedule", verifyJWT, requireTu, getExamSchedule);
+router.put("/tu/exam-schedule", verifyJWT, requireTu, saveExamSchedule);
 router.get("/spmb-classes", verifyJWT, requireStaff, listSpmbClasses);
 router.post("/spmb-classes", verifyJWT, requireTu, createClass);
 router.patch("/spmb-classes/:id", verifyJWT, requireTu, updateClass);
 router.delete("/spmb-classes/:id", verifyJWT, requireTu, deleteClass);
+router.get("/spmb-waves", verifyJWT, requireStaff, listWaves);
+router.post("/spmb-waves", verifyJWT, requireTu, createWave);
+router.patch("/spmb-waves/:id", verifyJWT, requireTu, updateWave);
+router.delete("/spmb-waves/:id", verifyJWT, requireTu, deleteWave);
 router.post("/auth/register", register);
 router.post("/auth/login", login);
 router.post("/auth/staff-login", staffLogin);
@@ -117,6 +169,10 @@ router.get("/applicants/lookup-nisn", verifyJWT, requireParent, lookupNisn);
 
 router.post("/bills/me/method", verifyJWT, requireParent, selectMethod);
 router.post("/bills/me/simulate-pay", verifyJWT, requireParent, simulatePay);
+router.post("/bills/me/bni-status", verifyJWT, requireParent, checkBniStatus);
+router.post("/admission-payments/me", verifyJWT, requireParent, startAdmissionPayment);
+router.post("/admission-payments/me/check", verifyJWT, requireParent, checkAdmissionPayment);
+router.post("/bills/bni/notify", bniNotify);
 
 router.get("/doc-requirements/published", listPublishedDocRequirements);
 router.get("/doc-requirements", verifyJWT, requireStaff, listDocRequirements);

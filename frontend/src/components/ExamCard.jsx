@@ -42,8 +42,9 @@ export default function ExamCard({ applicant }) {
         <table className="mt-4 w-full text-[11px] border border-slate-800 border-collapse">
           <tbody>
             <Row label="Nama" value={applicant?.studentName} />
-            <Row label="No. Registrasi" value={applicant?.examNumber} />
+            <Row label="ID Registrasi" value={applicant?.examNumber} />
             <Row label="Jenjang Pendidikan" value={jenjangLabel(applicant?.schoolTarget)} />
+            <Row label="Gelombang" value={applicant?.waveName} />
             <Row label="Tanggal Ujian" value={applicant?.examDate || "(Belum di Input)"} />
             <Row label="Lokasi Ujian" value={applicant?.examLocation || ""} last />
           </tbody>

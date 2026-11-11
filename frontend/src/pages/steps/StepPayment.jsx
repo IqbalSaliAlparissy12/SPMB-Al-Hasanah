@@ -28,7 +28,7 @@ function useCountdown(expiresAt) {
   return { label: `${pad(h)}:${pad(m)}:${pad(s)}`, expired: false };
 }
 
-export default function StepPayment({ bill, applyPayload, showToast, onPaidNext }) {
+export default function StepPayment({ applicant, bill, applyPayload, showToast, onPaidNext }) {
   const [method, setMethod] = useState(bill?.selectedMethod || "QRIS");
   const [busy, setBusy] = useState(false);
   const countdown = useCountdown(bill?.expiresAt);
@@ -64,6 +64,21 @@ export default function StepPayment({ bill, applyPayload, showToast, onPaidNext 
     }
   };
 
+  const bniReal = Boolean(bill?.bniLive) && method === "VA_BNI";
+
+  const checkBni = async () => {
+    setBusy(true);
+    try {
+      const { data } = await api.post("/bills/me/bni-status");
+      applyPayload(data);
+      showToast(data.bill?.status === "PAID" ? "Lunas" : "Belum masuk", data.message);
+    } catch (err) {
+      showToast("Gagal", err.response?.data?.message || "Tidak dapat mengecek pembayaran.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const simulate = async () => {
     setBusy(true);
     try {
@@ -86,6 +101,10 @@ export default function StepPayment({ bill, applyPayload, showToast, onPaidNext 
           </h2>
         </div>
         <div className="p-6 space-y-4 text-xs">
+          <div className="rounded-xl border border-sky-200 bg-sky-50 p-3">
+            <span className="font-semibold text-slate-600">ID Registrasi: </span>
+            <strong className="font-mono text-sky-900">{applicant?.examNumber || "-"}</strong>
+          </div>
           <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
             <div className="flex items-center gap-3">
               <i className="fas fa-check-circle text-emerald-600 text-2xl" />
@@ -114,10 +133,14 @@ export default function StepPayment({ bill, applyPayload, showToast, onPaidNext 
       </div>
       <div className="p-6 grid md:grid-cols-2 gap-6 text-xs">
         <div className="space-y-4">
+          <div className="rounded-xl border border-sky-200 bg-sky-50 p-3">
+            <span className="font-semibold text-slate-600">ID Registrasi: </span>
+            <strong className="font-mono text-sky-900">{applicant?.examNumber || "-"}</strong>
+          </div>
           <div className="border border-slate-200 rounded-2xl p-4">
             <p className="text-slate-500 font-semibold">Rincian tagihan</p>
             <div className="flex justify-between mt-3">
-              <span>Formulir PPDB</span>
+              <span>Formulir SPMB</span>
               <span className="font-bold">{formatRp(bill?.amount)}</span>
             </div>
             <div className="flex justify-between mt-2 pt-2 border-t">
@@ -165,6 +188,9 @@ export default function StepPayment({ bill, applyPayload, showToast, onPaidNext 
           ) : (
             <div className="border rounded-2xl p-4 space-y-2">
               <p className="font-semibold">{selected.label}</p>
+              {bniReal ? (
+                <p className="text-slate-500">Close payment. Transfer pas sesuai nominal. Nomor VA ditutup setelah lunas.</p>
+              ) : null}
               <p className="font-mono text-lg font-bold tracking-wide">{vaNumber}</p>
               <button type="button" onClick={() => copy(vaNumber, "Nomor VA")} className="w-full py-2 bg-slate-800 text-white rounded-lg font-bold">
                 <i className="fas fa-copy mr-1" /> Salin Nomor VA
@@ -172,14 +198,25 @@ export default function StepPayment({ bill, applyPayload, showToast, onPaidNext 
             </div>
           )}
 
-          <button
-            type="button"
-            disabled={busy || countdown.expired}
-            onClick={simulate}
-            className="w-full py-3 bg-emerald-600 disabled:opacity-50 text-white font-bold rounded-xl shadow"
-          >
-            {busy ? "Memproses..." : "Simulasi: Saya Sudah Bayar"}
-          </button>
+          {bniReal ? (
+            <button
+              type="button"
+              disabled={busy || countdown.expired}
+              onClick={checkBni}
+              className="w-full py-3 bg-emerald-600 disabled:opacity-50 text-white font-bold rounded-xl shadow"
+            >
+              {busy ? "Memeriksa..." : "Cek status pembayaran"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={busy || countdown.expired}
+              onClick={simulate}
+              className="w-full py-3 bg-emerald-600 disabled:opacity-50 text-white font-bold rounded-xl shadow"
+            >
+              {busy ? "Memproses..." : "Simulasi: Saya Sudah Bayar"}
+            </button>
+          )}
         </div>
       </div>
     </div>

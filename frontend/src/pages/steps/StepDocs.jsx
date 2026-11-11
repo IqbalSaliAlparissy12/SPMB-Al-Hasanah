@@ -37,6 +37,10 @@ export default function StepDocs({ documents, applyPayload, showToast }) {
     try {
       const { data } = await api.post("/documents/finish");
       applyPayload(data);
+      if (data.raporUrl) {
+        window.location.href = data.raporUrl;
+        return;
+      }
       showToast("Selesai", data.message);
     } catch (err) {
       showToast("Belum lengkap", err.response?.data?.message || "Lengkapi dokumen.");

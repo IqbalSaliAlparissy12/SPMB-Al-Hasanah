@@ -21,7 +21,7 @@ const ExamResult = db.define(
     examinerName: DataTypes.STRING,
     examinerAmanahUserId: DataTypes.INTEGER,
     status: {
-      type: DataTypes.ENUM("LULUS", "TIDAK_LULUS"),
+      type: DataTypes.ENUM("LULUS", "TIDAK_LULUS", "LULUS_CADANGAN", "MENGUNDURKAN_DIRI"),
       allowNull: false,
     },
     observasiScore: DataTypes.STRING,
