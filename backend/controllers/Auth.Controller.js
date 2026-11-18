@@ -11,10 +11,12 @@ import {
   db,
   DocRequirement,
   DocumentFile,
+  ExamAnnouncement,
   ExamResult,
   ExamSchedule,
   FeePackage,
   SpmbWave,
+  StudentValidation,
   User,
 } from "../models/index.js";
 import { ensureDocRequirements } from "./DocRequirement.Controller.js";
@@ -23,9 +25,15 @@ import { bniConfig, bniEnabled, createCloseBilling } from "../services/bniEcolle
 import { generateVirtualAccounts } from "../utils/va.js";
 import { publicUser, serializeDashboard } from "../utils/payload.js";
 import { loginAmanahStaff } from "../services/amanahStaff.js";
+import {
+  amanahParentUsernameExists,
+  findAmanahParentByStudentName,
+  suggestAmanahStudentNames,
+} from "../services/amanahSync.js";
 import { getAmanahSchoolById } from "../services/amanahSchools.js";
 import { getSpmbClassById } from "./SpmbClass.Controller.js";
 import { createRegistrationNumber } from "./SpmbSchoolConfig.Controller.js";
+import { sanitizeStudentValidation, studentValidationErrors } from "../utils/studentValidation.js";
 
 async function uniqueVirtualAccounts() {
   const prefix = bniEnabled() ? bniConfig().prefix : "";
@@ -63,7 +71,7 @@ async function loadDashboard(user) {
     : [];
   const dashboard = serializeDashboard({ user, applicant, bill, documents });
   if (applicant) {
-    const [waveSchedule, legacySchedule, selectedWave, admissionPackage] = await Promise.all([
+    const [waveSchedule, legacySchedule, selectedWave, admissionPackage, announcement] = await Promise.all([
       applicant.waveId
         ? ExamSchedule.findOne({ where: { schoolId: applicant.schoolId, waveId: applicant.waveId } })
         : Promise.resolve(null),
@@ -72,6 +80,7 @@ async function loadDashboard(user) {
         ? SpmbWave.findOne({ where: { id: applicant.waveId, schoolId: applicant.schoolId }, attributes: ["name"] })
         : Promise.resolve(null),
       loadAdmissionPackage(applicant),
+      ExamAnnouncement.findOne({ where: { applicantId: applicant.id }, attributes: ["announcementDate", "publishedAt"] }),
     ]);
     const schedule = waveSchedule || legacySchedule;
     dashboard.applicant = {
@@ -80,6 +89,7 @@ async function loadDashboard(user) {
       examLocation: schedule?.examLocation || "",
       waveName: selectedWave?.name || "",
       admissionPackage,
+      announcementDate: announcement?.publishedAt ? announcement.announcementDate : null,
     };
   }
   if (dashboard.bill) {
@@ -206,6 +216,8 @@ export async function raporUrlFor(user) {
   if (!target || user?.role !== "ORTU") return null;
   const applicant = await Applicant.findOne({ where: { userId: user.id } });
   if (!applicant) return null;
+  const validation = await StudentValidation.findOne({ where: { applicantId: applicant.id } });
+  if (!validation || studentValidationErrors(sanitizeStudentValidation(JSON.parse(validation.data))).length) return null;
   await ensureDocRequirements();
   const required = await DocRequirement.findAll({ where: { published: true } });
   if (!required.length) return null;
@@ -250,6 +262,17 @@ export async function register(req, res) {
     if (!/^[a-z0-9._]{4,30}$/.test(uname)) {
       return res.status(400).json({
         message: "Username 4–30 karakter, hanya huruf, angka, titik, atau underscore.",
+      });
+    }
+
+    const amanahUsername = await amanahParentUsernameExists(uname);
+    if (!amanahUsername.ok) {
+      const status = amanahUsername.code === "DISABLED" ? 503 : 502;
+      return res.status(status).json({ message: amanahUsername.message });
+    }
+    if (amanahUsername.exists) {
+      return res.status(409).json({
+        message: "Username sudah digunakan oleh akun wali Amanah. Gunakan username SPMB lain.",
       });
     }
 
@@ -343,6 +366,41 @@ export async function register(req, res) {
     });
   } catch (error) {
     return res.status(error.status || 500).json({ message: error.message });
+  }
+}
+
+export async function suggestAmanahStudents(req, res) {
+  try {
+    const prefix = String(req.query.query || "").trim();
+    if (req.query.isAlumni !== "true") return res.status(400).json({ message: "Saran nama Amanah hanya untuk alumni." });
+    if (prefix.length < 3) return res.json({ names: [] });
+
+    const result = await suggestAmanahStudentNames(prefix);
+    if (!result.ok) {
+      const status = result.code === "DISABLED" ? 503 : 502;
+      return res.status(status).json({ message: result.message });
+    }
+    return res.json({ names: result.names });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+}
+
+export async function lookupAmanahParent(req, res) {
+  try {
+    if (req.body.isAlumni !== true) {
+      return res.status(400).json({ message: "Pencarian data wali Amanah hanya untuk alumni." });
+    }
+    const result = await findAmanahParentByStudentName(req.body.studentName);
+    if (!result.ok) {
+      const status = result.code === "INVALID" ? 400 : result.code === "NOT_FOUND" ? 404
+        : result.code === "AMBIGUOUS" ? 409 : result.code === "DISABLED" ? 503 : 502;
+      return res.status(status).json({ message: result.message });
+    }
+    res.set("Cache-Control", "no-store");
+    return res.json({ parent: result.parent });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 }
 

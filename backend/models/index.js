@@ -12,6 +12,7 @@ import SpmbClass from "./SpmbClass.js";
 import SpmbStage from "./SpmbStage.js";
 import SpmbWave from "./SpmbWave.js";
 import ExamResult from "./ExamResult.js";
+import ExamAnnouncement from "./ExamAnnouncement.js";
 import ExamSubject from "./ExamSubject.js";
 import ExamScore from "./ExamScore.js";
 import ExamSchedule from "./ExamSchedule.js";
@@ -24,6 +25,7 @@ import AnnualFeeAmount from "./AnnualFeeAmount.js";
 import ApplicantFeeAmount from "./ApplicantFeeAmount.js";
 import AdmissionPayment from "./AdmissionPayment.js";
 import SpmbSchoolConfig from "./SpmbSchoolConfig.js";
+import StudentValidation from "./StudentValidation.js";
 
 FeeGroup.hasMany(FeeGroupItem, { foreignKey: "groupId", as: "items" });
 FeeGroupItem.belongsTo(FeeGroup, { foreignKey: "groupId" });
@@ -51,6 +53,7 @@ export {
   SpmbStage,
   SpmbWave,
   ExamResult,
+  ExamAnnouncement,
   ExamSubject,
   ExamScore,
   ExamSchedule,
@@ -63,4 +66,5 @@ export {
   ApplicantFeeAmount,
   AdmissionPayment,
   SpmbSchoolConfig,
+  StudentValidation,
 };

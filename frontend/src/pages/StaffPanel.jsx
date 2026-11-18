@@ -1303,8 +1303,14 @@ function TesView({ showToast, user }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_EXAM);
   const [busy, setBusy] = useState(false);
+  const [announcementDate, setAnnouncementDate] = useState("");
+  const [announcementWaveId, setAnnouncementWaveId] = useState("");
   const isAtExamStage = (row) => Number(row.currentStep) === 4;
   const stageFourApplicants = rows.filter(isAtExamStage);
+  const selectedWave = waves.find((wave) => String(wave.id) === announcementWaveId);
+  const pendingCount = selectedWave
+    ? rows.filter((row) => row.announcementPending && String(row.waveId) === announcementWaveId).length
+    : 0;
   const paymentStatusLabel = (status) =>
     ({ PAID: "Lunas", PARTIAL: "Dibayar sebagian", PENDING: "Menunggu konfirmasi", UNPAID: "Belum dibayar" })[status] || "Belum diatur";
 
@@ -1369,13 +1375,28 @@ function TesView({ showToast, user }) {
     }
   };
 
+  const publish = async (e) => {
+    e.preventDefault();
+    if (!window.confirm(`Umumkan ${pendingCount} hasil tes ${selectedWave.name} sekarang? Tanggal hanya sebagai informasi.`)) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post("/exam-results/publish", { announcementDate, waveId: Number(announcementWaveId) });
+      showToast?.(data.syncFailures ? "Pengumuman diterbitkan, sinkronisasi bermasalah" : "Pengumuman diterbitkan", data.message);
+      await load();
+    } catch (err) {
+      showToast?.("Gagal", err.response?.data?.message || "Tidak dapat mengumumkan hasil tes.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="max-w-5xl space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-slate-800">Hasil tes</h2>
           <p className="text-xs text-slate-500 mt-1">
-            Isi semua nilai penilaian dan tetapkan kelulusan di form ini. Jika dinyatakan lulus, pendaftar langsung masuk tahap Surat Keputusan dan Biaya Masuk.
+            Hasil tes disimpan sebagai draf sampai TU mengumumkannya. Siswa yang lulus kemudian dapat masuk tahap Surat Keputusan dan Biaya Masuk.
           </p>
         </div>
         <button type="button" onClick={openCreate} className="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold shrink-0">
@@ -1383,12 +1404,35 @@ function TesView({ showToast, user }) {
         </button>
       </div>
 
+      {user?.role === "TU" ? (
+        <form onSubmit={publish} className="bg-white border rounded-2xl p-4 flex flex-wrap items-end gap-3 text-xs">
+          <label className="space-y-1">
+            <span className="block font-semibold text-slate-700">Tanggal pengumuman</span>
+            <input type="date" required value={announcementDate} onChange={(e) => setAnnouncementDate(e.target.value)} className="px-3 py-2 border rounded-lg" />
+          </label>
+          <label className="space-y-1">
+            <span className="block font-semibold text-slate-700">Gelombang</span>
+            <select required value={announcementWaveId} onChange={(e) => setAnnouncementWaveId(e.target.value)} className="px-3 py-2 border rounded-lg">
+              <option value="">Pilih gelombang</option>
+              {waves.map((wave) => <option key={wave.id} value={wave.id}>{wave.name}</option>)}
+            </select>
+          </label>
+          <button type="submit" disabled={busy || !announcementDate || !selectedWave || pendingCount === 0} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold disabled:opacity-50">
+            Umumkan hasil tes ({pendingCount})
+          </button>
+          <p className="w-full text-slate-500">Hanya draf pada gelombang yang dipilih langsung diumumkan saat tombol ditekan. Tanggal hanya informasi, bukan jadwal otomatis.</p>
+          {selectedWave && pendingCount === 0 ? <p className="w-full text-amber-700">Tidak ada draf untuk gelombang ini. Hasil yang sudah diumumkan tidak dihitung; isi hasil tes untuk pendaftar yang belum diisi.</p> : null}
+          {waves.length === 0 ? <p className="w-full text-amber-700">Belum ada gelombang SPMB di lembaga ini.</p> : null}
+        </form>
+      ) : null}
+
       <div className="bg-white border rounded-2xl overflow-x-auto">
         <table className="w-full text-xs text-left">
           <thead className="bg-slate-50 text-slate-500">
             <tr>
               <th className="px-3 py-2 font-semibold">Calon siswa</th>
               <th className="px-3 py-2 font-semibold">Kelas</th>
+              <th className="px-3 py-2 font-semibold">Gelombang</th>
               <th className="px-3 py-2 font-semibold">Penguji</th>
               <th className="px-3 py-2 font-semibold">Status</th>
               <th className="px-3 py-2 font-semibold">Tanggal</th>
@@ -1402,21 +1446,29 @@ function TesView({ showToast, user }) {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-3 py-6 text-center text-slate-500">
+                <td colSpan={11} className="px-3 py-6 text-center text-slate-500">
                   Belum ada calon siswa yang mengirim formulir di unit ini.
                 </td>
               </tr>
             ) : null}
             {rows.map((row) => (
               <tr key={row.id} className="border-t">
-                <td className="px-3 py-2 font-bold text-slate-800">{row.studentName}</td>
+                <td className="px-3 py-2 font-bold text-slate-800">
+                  {row.studentName}
+                  {row.examNumber ? <span className="block text-[10px] font-normal text-slate-500">No. {row.examNumber}</span> : null}
+                </td>
                 <td className="px-3 py-2">{row.kelasName || "-"}</td>
+                <td className="px-3 py-2">{waves.find((wave) => Number(wave.id) === Number(row.waveId))?.name || "-"}</td>
                 <td className="px-3 py-2">{row.exam?.examinerName || "-"}</td>
                 <td className={`px-3 py-2 font-semibold ${row.exam?.status === "LULUS" ? "text-emerald-700" : "text-amber-700"}`}>
                   {row.exam ? EXAM_STATUS_LABELS[row.exam.status] || "Belum diisi" : "Belum diisi"}
+                  {row.announcementPending ? <span className="block text-[10px] text-amber-700">Draf, belum diumumkan</span> : row.exam ? <span className="block text-[10px] text-slate-500">Sudah diumumkan</span> : null}
                 </td>
                 <td className="px-3 py-2">{formatWhen(row.exam?.updatedAt)}</td>
-                <td className="px-3 py-2">{row.paymentPackageName || "-"}</td>
+                <td className="px-3 py-2">
+                  {row.paymentPackageName || "-"}
+                  {row.announcementPending && row.draftPaymentPackageName !== row.paymentPackageName ? <span className="block text-[10px] text-amber-700">Draf: {row.draftPaymentPackageName || "-"}</span> : null}
+                </td>
                 <td className="px-3 py-2 whitespace-nowrap">
                   {row.paymentTotalAmount == null ? "Belum diatur" : formatRp(row.paymentTotalAmount)}
                   {row.paymentTotalAmount != null && row.paymentAcademicYear ? (
@@ -1487,7 +1539,7 @@ function TesView({ showToast, user }) {
               <option value="">Pilih calon siswa</option>
               {stageFourApplicants.map((row) => (
                 <option key={row.id} value={row.id}>
-                  {row.studentName}
+                  {row.studentName}{row.examNumber ? ` (${row.examNumber})` : ""}
                 </option>
               ))}
             </select>
@@ -2338,7 +2390,7 @@ function TahapanView({ showToast }) {
                           { step: 3, name: "Isi Data" },
                           { step: 4, name: "Ujian dan Wawancara" },
                           { step: 5, name: "Surat Keputusan dan Biaya Masuk" },
-                          { step: 6, name: "Dokumen" },
+                          { step: 6, name: "Dokumen dan Validasi Data Siswa" },
                         ]
                     ).map((stage) => (
                       <option key={stage.step} value={stage.step}>
@@ -2456,7 +2508,7 @@ function ListSiswaBaruView() {
     3: "Isi data",
     4: "Ujian",
     5: "Pengumuman",
-    6: "Dokumen",
+    6: "Dokumen dan Validasi Data Siswa",
   };
 
   return (

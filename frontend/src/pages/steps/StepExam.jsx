@@ -11,6 +11,9 @@ export default function StepExam({ applicant, applyPayload, showToast, onNext })
     LULUS_CADANGAN: "Status hasil tes: Lulus Cadangan. Tahap berikutnya terbuka setelah dinyatakan Lulus.",
     MENGUNDURKAN_DIRI: "Status hasil tes: Mengundurkan Diri.",
   };
+  const announcementDate = applicant?.announcementDate
+    ? new Date(`${applicant.announcementDate}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+    : "";
 
   useEffect(() => {
     api
@@ -98,7 +101,8 @@ export default function StepExam({ applicant, applyPayload, showToast, onNext })
             </button>
           ) : (
             <p className="text-slate-600 self-center">
-              {examStatusMessages[applicant?.announcementStatus] || "Menunggu hasil tes dari Guru atau TU. Tahap berikutnya terbuka setelah dinyatakan lulus."}
+              {examStatusMessages[applicant?.announcementStatus] || "Menunggu hasil tes diumumkan oleh TU. Tahap berikutnya terbuka setelah dinyatakan lulus."}
+              {announcementDate ? ` Tanggal pengumuman: ${announcementDate}.` : ""}
             </p>
           )}
         </div>

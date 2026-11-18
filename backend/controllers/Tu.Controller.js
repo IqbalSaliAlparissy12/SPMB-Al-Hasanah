@@ -9,6 +9,7 @@ import {
   db,
   DocRequirement,
   DocumentFile,
+  ExamAnnouncement,
   ExamResult,
   ExamSchedule,
   FeePackage,
@@ -23,7 +24,7 @@ export const STAGE_DEFS = [
   { step: 3, name: "Isi Data" },
   { step: 4, name: "Ujian dan Wawancara" },
   { step: 5, name: "Surat Keputusan dan Biaya Masuk" },
-  { step: 6, name: "Dokumen" },
+  { step: 6, name: "Dokumen dan Validasi Data Siswa" },
 ];
 
 function staffSchoolId(req) {
@@ -38,6 +39,11 @@ function announcementLabel(status) {
     LULUS_CADANGAN: "Lulus cadangan",
     MENGUNDURKAN_DIRI: "Mengundurkan diri",
   }[status] || "Menunggu hasil tes";
+}
+
+function pendingFeeDraft(applicant) {
+  if (applicant.announcementStatus !== "MENUNGGU" || !applicant.examAnnouncement?.draft) return null;
+  return JSON.parse(applicant.examAnnouncement.draft);
 }
 
 export async function ensureStages(schoolId) {
@@ -207,6 +213,7 @@ export async function listApplicants(req, res) {
         { model: User, attributes: ["name", "wa", "username"] },
         { model: Bill, attributes: ["status", "amount", "paidAt", "selectedMethod", "expiresAt"] },
         { model: ExamResult, as: "examResult", attributes: ["academicYear", "status"] },
+        { model: ExamAnnouncement, as: "examAnnouncement", attributes: ["draft"] },
       ],
       order: [["updatedAt", "DESC"]],
     });
@@ -234,7 +241,8 @@ export async function listApplicants(req, res) {
       });
       filesByApplicant.set(file.applicantId, files);
     }
-    const packageIds = [...new Set(rows.map((row) => row.paymentPackageId).filter(Boolean))];
+    const drafts = new Map(rows.map((row) => [row.id, pendingFeeDraft(row)]));
+    const packageIds = [...new Set(rows.map((row) => drafts.get(row.id)?.paymentPackageId || row.paymentPackageId).filter(Boolean))];
     const packages = packageIds.length
       ? await FeePackage.findAll({
           where: { schoolId, id: packageIds },
@@ -242,7 +250,7 @@ export async function listApplicants(req, res) {
         })
       : [];
     const packageNames = new Map(packages.map((item) => [item.id, item.name]));
-    const waveIds = [...new Set(rows.map((row) => row.waveId).filter(Boolean))];
+    const waveIds = [...new Set(rows.map((row) => drafts.get(row.id)?.waveId || row.waveId).filter(Boolean))];
     const waves = waveIds.length
       ? await SpmbWave.findAll({
           where: { schoolId, id: waveIds },
@@ -261,13 +269,13 @@ export async function listApplicants(req, res) {
         maxUnlockedStep: row.maxUnlockedStep,
         announcementStatus: row.announcementStatus,
         announcementLabel: announcementLabel(row.announcementStatus),
-        examAcademicYear: row.examResult?.academicYear || null,
-        examStatus: row.examResult?.status || null,
+        examAcademicYear: drafts.get(row.id)?.exam.academicYear || row.examResult?.academicYear || null,
+        examStatus: drafts.get(row.id)?.exam.status || row.examResult?.status || null,
         parentName: row.user?.name,
         parentWa: row.user?.wa,
         parentUsername: row.user?.username,
-        paymentPackageName: packageNames.get(row.paymentPackageId) || null,
-        waveName: waveNames.get(row.waveId) || null,
+        paymentPackageName: packageNames.get(drafts.get(row.id)?.paymentPackageId || row.paymentPackageId) || null,
+        waveName: waveNames.get(drafts.get(row.id)?.waveId || row.waveId) || null,
         billStatus: row.bill?.status || "UNPAID",
         billAmount: row.bill?.amount ?? null,
         billPaidAt: row.bill?.paidAt || null,
@@ -423,6 +431,7 @@ async function findApplicantForFeeDetails(req) {
     include: [
       { model: User, attributes: ["name"] },
       { model: ExamResult, as: "examResult" },
+      { model: ExamAnnouncement, as: "examAnnouncement", attributes: ["draft"] },
     ],
   });
   if (!applicant) {
@@ -430,7 +439,9 @@ async function findApplicantForFeeDetails(req) {
     error.status = 404;
     throw error;
   }
-  return applicant;
+  const draft = pendingFeeDraft(applicant);
+  if (!draft) return applicant;
+  return { ...applicant.toJSON(), paymentPackageId: draft.paymentPackageId, examResult: draft.exam };
 }
 
 export async function getApplicantFeeDetails(req, res) {

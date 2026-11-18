@@ -4,7 +4,15 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import verifyJWT, { requireGuruOrTu, requireParent, requireStaff, requireTu } from "../middleware/verifyJWT.js";
-import { login, logout, me, register, staffLogin } from "../controllers/Auth.Controller.js";
+import {
+  login,
+  logout,
+  lookupAmanahParent,
+  me,
+  register,
+  staffLogin,
+  suggestAmanahStudents,
+} from "../controllers/Auth.Controller.js";
 import { listSchools } from "../controllers/School.Controller.js";
 import {
   createClass,
@@ -29,6 +37,7 @@ import {
 import { bniNotify, checkBniStatus, selectMethod, simulatePay } from "../controllers/Bill.Controller.js";
 import { checkAdmissionPayment, startAdmissionPayment } from "../controllers/AdmissionPayment.Controller.js";
 import { finishRegistration, uploadDocument } from "../controllers/Document.Controller.js";
+import { getStudentValidation, saveStudentValidation } from "../controllers/StudentValidation.Controller.js";
 import {
   controlApplicant,
   getApplicantFeeDetails,
@@ -69,6 +78,7 @@ import {
   deleteSubject,
   listExamCandidates,
   listSubjects,
+  publishExamResults,
   saveExamResult,
   updateSubject,
 } from "../controllers/Exam.Controller.js";
@@ -156,6 +166,8 @@ router.post("/spmb-waves", verifyJWT, requireTu, createWave);
 router.patch("/spmb-waves/:id", verifyJWT, requireTu, updateWave);
 router.delete("/spmb-waves/:id", verifyJWT, requireTu, deleteWave);
 router.post("/auth/register", register);
+router.get("/auth/amanah-student-suggestions", suggestAmanahStudents);
+router.post("/auth/amanah-parent-lookup", lookupAmanahParent);
 router.post("/auth/login", login);
 router.post("/auth/staff-login", staffLogin);
 router.post("/auth/logout", logout);
@@ -166,6 +178,8 @@ router.post("/applicants/me/step", verifyJWT, requireParent, setStep);
 router.post("/applicants/me/announcement", verifyJWT, requireParent, simulateAnnouncement);
 router.post("/applicants/me/photo", verifyJWT, requireParent, uploadFile, uploadPhoto);
 router.get("/applicants/lookup-nisn", verifyJWT, requireParent, lookupNisn);
+router.get("/applicants/me/student-validation", verifyJWT, requireParent, getStudentValidation);
+router.put("/applicants/me/student-validation", verifyJWT, requireParent, saveStudentValidation);
 
 router.post("/bills/me/method", verifyJWT, requireParent, selectMethod);
 router.post("/bills/me/simulate-pay", verifyJWT, requireParent, simulatePay);
@@ -185,6 +199,7 @@ router.post("/documents/finish", verifyJWT, requireParent, finishRegistration);
 
 router.get("/exam-results", verifyJWT, requireGuruOrTu, listExamCandidates);
 router.post("/exam-results", verifyJWT, requireGuruOrTu, saveExamResult);
+router.post("/exam-results/publish", verifyJWT, requireTu, publishExamResults);
 router.get("/exam-subjects", verifyJWT, requireGuruOrTu, listSubjects);
 router.post("/exam-subjects", verifyJWT, requireTu, createSubject);
 router.patch("/exam-subjects/:id", verifyJWT, requireTu, updateSubject);

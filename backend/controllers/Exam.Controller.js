@@ -5,6 +5,8 @@ import {
   AnnualFeeSetup,
   ApplicantFeeAmount,
   AdmissionPayment,
+  db,
+  ExamAnnouncement,
   ExamResult,
   ExamScore,
   ExamSubject,
@@ -66,7 +68,7 @@ export async function listExamCandidates(req, res) {
       return res.status(400).json({ message: "Akun belum terhubung ke lembaga." });
     }
     await ensureSubjects(schoolId);
-    const [rows, subjects, packages, waves] = await Promise.all([
+    const [rows, subjects, packages, waves, announcements] = await Promise.all([
       Applicant.findAll({
         where: { schoolId },
         include: [
@@ -85,9 +87,15 @@ export async function listExamCandidates(req, res) {
         attributes: ["id", "name"],
         order: [["sortOrder", "ASC"], ["name", "ASC"]],
       }),
+      ExamAnnouncement.findAll({ where: { schoolId } }),
     ]);
+    const announcementsByApplicant = new Map(announcements.map((item) => [item.applicantId, item]));
+    const draftFor = (row) => {
+      const announcement = announcementsByApplicant.get(row.id);
+      return announcement?.draft ? JSON.parse(announcement.draft) : null;
+    };
     const ready = rows.filter(
-      (row) => row.formSubmittedAt || Number(row.currentStep) === 4 || row.examResult
+      (row) => row.formSubmittedAt || Number(row.currentStep) === 4 || row.examResult || draftFor(row)
     );
     const applicantIds = ready.map((row) => row.id);
     if (applicantIds.length) {
@@ -114,9 +122,12 @@ export async function listExamCandidates(req, res) {
       payments.push(payment);
       paymentsByApplicant.set(payment.applicantId, payments);
     }
-    const feeCandidates = ready.filter((row) => row.paymentPackageId);
-    const academicYears = [...new Set(feeCandidates.map((row) => row.examResult?.academicYear || currentAcademicYear()))];
-    const packageIds = [...new Set(feeCandidates.map((row) => row.paymentPackageId))];
+    const feeDraftFor = (row) => row.announcementStatus === "MENUNGGU" ? draftFor(row) : null;
+    const feePackageFor = (row) => feeDraftFor(row)?.paymentPackageId || row.paymentPackageId;
+    const feeYearFor = (row) => feeDraftFor(row)?.exam.academicYear || row.examResult?.academicYear || currentAcademicYear();
+    const feeCandidates = ready.filter((row) => feePackageFor(row));
+    const academicYears = [...new Set(feeCandidates.map(feeYearFor))];
+    const packageIds = [...new Set(feeCandidates.map(feePackageFor))];
     const setups = academicYears.length && packageIds.length
       ? await AnnualFeeSetup.findAll({ where: { schoolId, academicYear: { [Op.in]: academicYears } } })
       : [];
@@ -172,17 +183,18 @@ export async function listExamCandidates(req, res) {
       return { paidAmount, pendingAmount, remainingAmount, status };
     };
     const admissionTotalFor = (row) => {
-      if (!row.paymentPackageId) return null;
-      const academicYear = row.examResult?.academicYear || currentAcademicYear();
+      const packageId = feePackageFor(row);
+      if (!packageId) return null;
+      const academicYear = feeYearFor(row);
       const setup = setupByYear.get(academicYear);
       if (!setup) return null;
-      const amounts = feesBySetupAndPackage.get(`${setup.id}:${row.paymentPackageId}`) || [];
+      const amounts = feesBySetupAndPackage.get(`${setup.id}:${packageId}`) || [];
       const admissionAmounts = amounts.filter((item) => {
         const name = String(item.groupName || "").trim().toLocaleLowerCase("id-ID");
         return !["biaya pendaftaran", "bayar uang pendaftaran"].includes(name);
       });
       if (!admissionAmounts.length) return null;
-      const applicantOverrides = overridesByApplicantSetupPackage.get(`${row.id}:${setup.id}:${row.paymentPackageId}`);
+      const applicantOverrides = overridesByApplicantSetupPackage.get(`${row.id}:${setup.id}:${packageId}`);
       return admissionAmounts.reduce((total, item) => {
         const globalAmount = Number(item.amount) || 0;
         const override = applicantOverrides?.get(item.groupId);
@@ -201,21 +213,27 @@ export async function listExamCandidates(req, res) {
       packages,
       waves,
       applicants: ready.map((row) => {
+        const draft = draftFor(row);
+        const announcement = announcementsByApplicant.get(row.id);
         const paymentTotalAmount = admissionTotalFor(row);
         const paymentSummary = paymentSummaryFor(row, paymentTotalAmount);
         return {
           id: row.id,
           studentName: row.studentName,
+          examNumber: row.examNumber,
           kelasId: row.kelasId,
           kelasName: row.kelasName,
           isAlumni: row.isAlumni,
-          paymentPackageId: row.paymentPackageId,
-          waveId: row.waveId,
+          paymentPackageId: draft?.paymentPackageId || row.paymentPackageId,
+          waveId: draft?.waveId || row.waveId,
           schoolTarget: row.schoolTarget,
           currentStep: row.currentStep,
-          exam: serializeExam(row.examResult),
-          paymentPackageName: packagesById.get(row.paymentPackageId)?.name || null,
-          paymentAcademicYear: row.examResult?.academicYear || currentAcademicYear(),
+          exam: draft ? { ...draft.exam, scores: draft.scores, updatedAt: announcement.updatedAt } : serializeExam(row.examResult),
+          announcementPending: Boolean(draft),
+          announcementDate: announcement?.announcementDate || null,
+          paymentPackageName: packagesById.get(feePackageFor(row))?.name || null,
+          draftPaymentPackageName: draft ? packagesById.get(draft.paymentPackageId)?.name || null : null,
+          paymentAcademicYear: feeYearFor(row),
           paymentTotalAmount,
           paymentPaidAmount: paymentSummary.paidAmount,
           paymentPendingAmount: paymentSummary.pendingAmount,
@@ -229,24 +247,21 @@ export async function listExamCandidates(req, res) {
   }
 }
 
-async function applyExamStatus(applicant, status) {
+async function applyExamStatus(applicant, status, transaction) {
   if (status === "LULUS") {
     const patch = {
       announcementStatus: "LULUS",
       maxUnlockedStep: Math.max(applicant.maxUnlockedStep, 5),
     };
     if (Number(applicant.currentStep) === 4) patch.currentStep = 5;
-    await applicant.update(patch);
-    if (applicant.user) {
-      await tryPushIfAccepted(applicant, applicant.user);
-    }
+    await applicant.update(patch, { transaction });
     return;
   }
 
   const patch = { announcementStatus: status };
   if (applicant.maxUnlockedStep > 4) patch.maxUnlockedStep = 4;
   if (applicant.currentStep > 4) patch.currentStep = 4;
-  await applicant.update(patch);
+  await applicant.update(patch, { transaction });
 }
 
 export async function saveExamResult(req, res) {
@@ -315,25 +330,113 @@ export async function saveExamResult(req, res) {
       note: String(req.body.note || "").trim(),
     };
 
-    const existing = await ExamResult.findOne({ where: { applicantId: applicant.id } });
-    if (Number(applicant.currentStep) !== 4) {
+    const saved = await db.transaction(async (transaction) => {
+      const lockedWave = await SpmbWave.findOne({
+        where: { id: waveId, schoolId }, transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!lockedWave) {
+        const error = new Error("Gelombang tidak ditemukan pada lembaga ini.");
+        error.status = 400;
+        throw error;
+      }
+      const lockedApplicant = await Applicant.findOne({
+        where: { id: applicantId, schoolId }, transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!lockedApplicant || Number(lockedApplicant.currentStep) !== 4) return false;
+      const draft = JSON.stringify({ exam: payload, scores: scoreRows, paymentPackageId, waveId });
+      const announcement = await ExamAnnouncement.findOne({ where: { applicantId }, transaction, lock: transaction.LOCK.UPDATE });
+      if (announcement) await announcement.update({ draft }, { transaction });
+      else await ExamAnnouncement.create({ applicantId, schoolId, draft }, { transaction });
+      return true;
+    });
+    if (!saved) {
       return res.status(409).json({ message: "Hasil tes hanya dapat diisi setelah pendaftar masuk tahap Ujian dan Wawancara." });
     }
-    const row = existing ? await existing.update(payload) : await ExamResult.create(payload);
-    await ExamScore.destroy({ where: { examResultId: row.id } });
-    if (scoreRows.length) {
-      await ExamScore.bulkCreate(scoreRows.map((item) => ({ ...item, examResultId: row.id })));
-    }
-    await row.reload({ include: [{ model: ExamScore, as: "scores" }] });
-    await applicant.update({ paymentPackageId, waveId });
-    await applyExamStatus(applicant, status);
 
     return res.json({
-      message: `Hasil tes disimpan. Status: ${EXAM_STATUSES[status]}.`,
-      exam: serializeExam(row),
+      message: `Hasil tes disimpan sebagai draf. Status: ${EXAM_STATUSES[status]}. Menunggu pengumuman TU.`,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(error.status || 500).json({ message: error.message });
+  }
+}
+
+export async function publishExamResults(req, res) {
+  try {
+    const schoolId = staffSchoolId(req);
+    if (!schoolId) return res.status(400).json({ message: "Akun TU belum terhubung ke lembaga." });
+    const date = typeof req.body.announcementDate === "string" ? req.body.announcementDate : "";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date)) ||
+        new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date) {
+      return res.status(400).json({ message: "Tanggal pengumuman tidak valid." });
+    }
+    const waveId = Number(req.body.waveId);
+    if (!Number.isSafeInteger(waveId) || waveId <= 0) {
+      return res.status(400).json({ message: "Pilih gelombang pengumuman." });
+    }
+    const published = await db.transaction(async (transaction) => {
+      const wave = await SpmbWave.findOne({
+        where: { id: waveId, schoolId }, transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!wave) {
+        const error = new Error("Gelombang tidak ditemukan pada lembaga ini.");
+        error.status = 400;
+        throw error;
+      }
+      const pending = await ExamAnnouncement.findAll({
+        where: { schoolId, draft: { [Op.ne]: null } }, order: [["applicantId", "ASC"]], transaction,
+      });
+      const released = [];
+      for (const entry of pending) {
+        if (Number(JSON.parse(entry.draft).waveId) !== waveId) continue;
+        const applicant = await Applicant.findOne({
+          where: { id: entry.applicantId, schoolId }, include: [{ model: User }],
+          transaction, lock: transaction.LOCK.UPDATE,
+        });
+        if (!applicant) throw new Error("Pendaftar untuk draf hasil tes tidak ditemukan di lembaga ini.");
+        const announcement = await ExamAnnouncement.findOne({
+          where: { applicantId: applicant.id, schoolId }, transaction, lock: transaction.LOCK.UPDATE,
+        });
+        if (!announcement?.draft) continue;
+        const draft = JSON.parse(announcement.draft);
+        if (Number(draft.waveId) !== waveId) continue;
+        const existing = await ExamResult.findOne({ where: { applicantId: applicant.id }, transaction });
+        const exam = existing
+          ? await existing.update(draft.exam, { transaction })
+          : await ExamResult.create(draft.exam, { transaction });
+        await ExamScore.destroy({ where: { examResultId: exam.id }, transaction });
+        await ExamScore.bulkCreate(draft.scores.map((score) => ({ ...score, examResultId: exam.id })), { transaction });
+        await applicant.update({ paymentPackageId: draft.paymentPackageId, waveId: draft.waveId }, { transaction });
+        await applyExamStatus(applicant, draft.exam.status, transaction);
+        await announcement.update({ draft: null, announcementDate: date, publishedAt: new Date() }, { transaction });
+        released.push(applicant);
+      }
+      return released;
+    });
+    if (!published.length) return res.status(409).json({ message: "Tidak ada draf hasil tes pada gelombang ini untuk diumumkan." });
+    let syncFailures = 0;
+    for (const applicant of published) {
+      if (applicant.announcementStatus !== "LULUS") continue;
+      if (!applicant.user) {
+        console.error(`Gagal menyinkronkan pendaftar ${applicant.id}: akun orang tua tidak ditemukan.`);
+        syncFailures += 1;
+        continue;
+      }
+      try {
+        const result = await tryPushIfAccepted(applicant, applicant.user);
+        if (!result.ok) syncFailures += 1;
+      } catch (error) {
+        console.error("Gagal menyinkronkan siswa setelah pengumuman:", error);
+        syncFailures += 1;
+      }
+    }
+    return res.json({
+      message: `${published.length} hasil tes diumumkan.${syncFailures ? ` Sinkronisasi Amanah gagal untuk ${syncFailures} siswa; periksa log sinkronisasi.` : ""}`,
+      publishedCount: published.length,
+      syncFailures,
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({ message: error.message });
   }
 }
 

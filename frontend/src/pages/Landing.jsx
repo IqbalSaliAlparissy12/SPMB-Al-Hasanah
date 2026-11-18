@@ -19,6 +19,12 @@ export default function Landing({ showToast }) {
   const navigate = useNavigate();
   const [modal, setModal] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [studentSuggestions, setStudentSuggestions] = useState([]);
+  const [suggestionsReady, setSuggestionsReady] = useState(false);
+  const [suggestionError, setSuggestionError] = useState("");
+  const [studentNameSelected, setStudentNameSelected] = useState(false);
+  const [parentLoading, setParentLoading] = useState(false);
+  const [parentMessage, setParentMessage] = useState("");
   const [reg, setReg] = useState({
     schoolId: "",
     kelasId: "",
@@ -89,6 +95,73 @@ export default function Landing({ showToast }) {
     };
   }, [feeKey, reg.schoolId, reg.kelasId, reg.isAlumni]);
 
+  useEffect(() => {
+    const prefix = reg.studentName.trim();
+    if (studentNameSelected || reg.isAlumni !== "true" || prefix.length < 3) {
+      setStudentSuggestions([]);
+      setSuggestionsReady(false);
+      setSuggestionError("");
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setStudentSuggestions([]);
+    setSuggestionsReady(false);
+    setSuggestionError("");
+    const timeout = setTimeout(async () => {
+      try {
+        const { data } = await api.get("/auth/amanah-student-suggestions", {
+          params: { query: prefix, isAlumni: reg.isAlumni },
+          signal: controller.signal,
+        });
+        setStudentSuggestions(data.names || []);
+        setSuggestionsReady(true);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setSuggestionError(err.response?.data?.message || "Saran nama dari Amanah tidak dapat dimuat.");
+        setSuggestionsReady(true);
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [reg.studentName, reg.isAlumni, studentNameSelected]);
+
+  useEffect(() => {
+    if (modal !== "register" || !studentNameSelected || reg.isAlumni !== "true") {
+      setParentLoading(false);
+      setParentMessage("");
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setParentLoading(true);
+    setParentMessage("Mengambil data wali dari Amanah...");
+    api.post("/auth/amanah-parent-lookup", {
+      studentName: reg.studentName,
+      isAlumni: true,
+    }, { signal: controller.signal })
+      .then(({ data }) => {
+        if (controller.signal.aborted) return;
+        const { name, wa } = data.parent;
+        setReg((prev) => ({ ...prev, name, wa }));
+        setParentMessage(name && wa
+          ? "Nama wali dan WhatsApp diisi dari Amanah. Periksa kembali datanya."
+          : "Sebagian data wali belum tersedia di Amanah. Silakan lengkapi secara manual.");
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setParentMessage(err.response?.data?.message || "Data wali dari Amanah tidak dapat dimuat. Silakan isi secara manual.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setParentLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [modal, reg.studentName, reg.isAlumni, studentNameSelected]);
+
   const errors = useMemo(() => {
     const next = {};
     if (reg.wa && !/^08\d{8,11}$/.test(reg.wa.replace(/\s/g, ""))) {
@@ -107,6 +180,7 @@ export default function Landing({ showToast }) {
   }, [reg]);
 
   const canSubmitReg =
+    !parentLoading &&
     reg.schoolId &&
     reg.kelasId &&
     (reg.isAlumni === "true" || reg.isAlumni === "false") &&
@@ -141,6 +215,18 @@ export default function Landing({ showToast }) {
     } finally {
       setBusy(false);
     }
+  };
+
+  const selectSuggestedStudent = (studentName) => {
+    setStudentNameSelected(true);
+    setStudentSuggestions([]);
+    setSuggestionsReady(false);
+    setReg((prev) => ({
+      ...prev,
+      studentName,
+      name: "",
+      wa: "",
+    }));
   };
 
   const handleLogin = async (e) => {
@@ -245,7 +331,14 @@ export default function Landing({ showToast }) {
               required
               className={inputClass}
               value={reg.isAlumni}
-              onChange={(e) => setReg({ ...reg, isAlumni: e.target.value })}
+              onChange={(e) => {
+                setStudentNameSelected(false);
+                setReg({
+                  ...reg,
+                  isAlumni: e.target.value,
+                  ...(studentNameSelected ? { name: "", wa: "" } : {}),
+                });
+              }}
             >
               <option value="">Pilih</option>
               <option value="false">Tidak, siswa baru</option>
@@ -261,11 +354,48 @@ export default function Landing({ showToast }) {
               {selectedFee.reason || "Biaya formulir belum tersedia. Periksa pemetaan paket dan nominal grup biaya pada Setup Tahunan."}
             </p>
           ) : null}
-          <Field label="Nama Orang Tua / Wali *">
-            <input required className={inputClass} value={reg.name} onChange={(e) => setReg({ ...reg, name: e.target.value })} placeholder="Nama lengkap wali" />
-          </Field>
           <Field label="Nama Calon Siswa *">
-            <input required className={inputClass} value={reg.studentName} onChange={(e) => setReg({ ...reg, studentName: e.target.value })} placeholder="Nama sesuai akta" />
+            <div className="relative">
+              <input
+                required
+                autoComplete="off"
+                className={inputClass}
+                value={reg.studentName}
+                onChange={(e) => {
+                  setStudentNameSelected(false);
+                  setReg({
+                    ...reg,
+                    studentName: e.target.value,
+                    ...(studentNameSelected ? { name: "", wa: "" } : {}),
+                  });
+                }}
+                placeholder={reg.isAlumni === "true" ? "Ketik minimal 3 huruf nama alumni" : "Nama lengkap sesuai akta"}
+              />
+              {studentSuggestions.length > 0 ? (
+                <ul role="listbox" className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-300 bg-white py-1 shadow-lg">
+                  {studentSuggestions.map((studentName) => (
+                    <li key={studentName} role="option" aria-selected="false">
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2 text-left text-xs hover:bg-sky-50"
+                        onClick={() => selectSuggestedStudent(studentName)}
+                      >
+                        {studentName}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            {suggestionError ? (
+              <p className="text-[10px] text-red-600 mt-1">{suggestionError}</p>
+            ) : suggestionsReady && reg.studentName.trim().length >= 3 && !studentNameSelected ? (
+              <p className="text-[10px] text-slate-500 mt-1">Nama tidak ditemukan di Amanah. Siswa baru tetap dapat didaftarkan secara manual.</p>
+            ) : null}
+            {parentMessage ? <p role="status" className="text-[10px] text-slate-600 mt-1">{parentMessage}</p> : null}
+          </Field>
+          <Field label="Nama Orang Tua / Wali *">
+            <input required disabled={parentLoading} className={inputClass} value={reg.name} onChange={(e) => setReg({ ...reg, name: e.target.value })} placeholder="Nama lengkap wali" />
           </Field>
           <Field label="No. WhatsApp *" error={errors.wa}>
             <input
@@ -273,6 +403,7 @@ export default function Landing({ showToast }) {
               type="tel"
               className={inputClass}
               value={reg.wa}
+              disabled={parentLoading}
               onChange={(e) => setReg({ ...reg, wa: e.target.value })}
               placeholder="08xxxxxxxxxx"
             />
@@ -290,7 +421,16 @@ export default function Landing({ showToast }) {
             </p>
           </Field>
           <Field label="Password *" error={errors.password}>
-            <input required type="password" minLength={6} className={inputClass} value={reg.password} onChange={(e) => setReg({ ...reg, password: e.target.value })} placeholder="Minimal 6 karakter" />
+            <input
+              required
+              type="password"
+              minLength={6}
+              className={inputClass}
+              value={reg.password}
+              onChange={(e) => setReg({ ...reg, password: e.target.value })}
+              placeholder="Minimal 6 karakter"
+            />
+            <p className="text-[10px] text-slate-500 mt-1">Buat password baru untuk akun SPMB (minimal 6 karakter).</p>
           </Field>
           <Field label="Konfirmasi Password *" error={errors.confirm}>
             <input required type="password" className={inputClass} value={reg.confirm} onChange={(e) => setReg({ ...reg, confirm: e.target.value })} placeholder="Ulangi password" />

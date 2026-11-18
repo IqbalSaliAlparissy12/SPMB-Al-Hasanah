@@ -1,6 +1,7 @@
-import { Applicant, DocRequirement, DocumentFile } from "../models/index.js";
+import { Applicant, DocRequirement, DocumentFile, StudentValidation } from "../models/index.js";
 import { loadDashboard, raporUrlFor } from "./Auth.Controller.js";
 import { ensureDocRequirements } from "./DocRequirement.Controller.js";
+import { sanitizeStudentValidation, studentValidationErrors } from "../utils/studentValidation.js";
 
 export async function uploadDocument(req, res) {
   try {
@@ -36,6 +37,9 @@ export async function finishRegistration(req, res) {
   try {
     const applicant = await Applicant.findOne({ where: { userId: req.user.id } });
     if (!applicant) return res.status(404).json({ message: "Pendaftar tidak ditemukan." });
+    if (applicant.announcementStatus !== "LULUS" || applicant.maxUnlockedStep < 5) {
+      return res.status(403).json({ message: "Pendaftaran dapat diselesaikan setelah dinyatakan lulus." });
+    }
     await ensureDocRequirements();
     const required = await DocRequirement.findAll({ where: { published: true } });
     const docs = await DocumentFile.findAll({ where: { applicantId: applicant.id } });
@@ -43,6 +47,12 @@ export async function finishRegistration(req, res) {
     const missing = required.filter((item) => !kinds.has(item.code));
     if (missing.length) {
       return res.status(400).json({ message: `Unggah dulu: ${missing.map((item) => item.name).join(", ")}.` });
+    }
+    const validation = await StudentValidation.findOne({ where: { applicantId: applicant.id } });
+    if (!validation) return res.status(400).json({ message: "Simpan dan lengkapi data siswa terlebih dahulu." });
+    const errors = studentValidationErrors(sanitizeStudentValidation(JSON.parse(validation.data)));
+    if (errors.length) {
+      return res.status(400).json({ message: `Lengkapi data siswa: ${errors.slice(0, 3).join(", ")}.` });
     }
     await applicant.update({ currentStep: 6, maxUnlockedStep: 6 });
     const raporUrl = await raporUrlFor(req.user);

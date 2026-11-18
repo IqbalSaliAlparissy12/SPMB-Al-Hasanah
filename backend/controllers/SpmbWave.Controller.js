@@ -1,5 +1,5 @@
 import { Op } from "sequelize";
-import { Applicant, SpmbWave } from "../models/index.js";
+import { Applicant, db, ExamAnnouncement, SpmbWave } from "../models/index.js";
 
 function staffSchoolId(req) {
   return Number(req.staff?.schoolId) || null;
@@ -78,15 +78,26 @@ export async function updateWave(req, res) {
 export async function deleteWave(req, res) {
   try {
     const schoolId = staffSchoolId(req);
-    const row = await SpmbWave.findOne({ where: { id: req.params.id, schoolId } });
-    if (!row) return res.status(404).json({ message: "Gelombang tidak ditemukan." });
-    const assigned = await Applicant.findOne({ where: { schoolId, waveId: row.id } });
-    if (assigned) {
-      return res.status(409).json({ message: "Gelombang sudah ditetapkan ke calon siswa dan tidak dapat dihapus." });
-    }
-    await row.destroy();
+    await db.transaction(async (transaction) => {
+      const row = await SpmbWave.findOne({
+        where: { id: req.params.id, schoolId }, transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!row) {
+        const error = new Error("Gelombang tidak ditemukan.");
+        error.status = 404;
+        throw error;
+      }
+      const assigned = await Applicant.findOne({ where: { schoolId, waveId: row.id }, transaction });
+      const drafts = await ExamAnnouncement.findAll({ where: { schoolId, draft: { [Op.ne]: null } }, transaction });
+      if (assigned || drafts.some((item) => Number(JSON.parse(item.draft).waveId) === Number(row.id))) {
+        const error = new Error("Gelombang sudah ditetapkan ke calon siswa atau draf hasil tes dan tidak dapat dihapus.");
+        error.status = 409;
+        throw error;
+      }
+      await row.destroy({ transaction });
+    });
     return res.json({ message: "Gelombang dihapus." });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(error.status || 500).json({ message: error.message });
   }
 }

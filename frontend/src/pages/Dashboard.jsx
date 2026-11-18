@@ -15,7 +15,7 @@ const STEPS = [
   { n: 3, label: "3. Isi Data" },
   { n: 4, label: "4. Ujian dan Wawancara" },
   { n: 5, label: "5. Surat Keputusan dan Biaya Masuk" },
-  { n: 6, label: "6. Dokumen" },
+  { n: 6, label: "6. Dokumen dan Validasi Data Siswa" },
 ];
 
 export default function Dashboard({ showToast }) {
@@ -39,6 +39,39 @@ export default function Dashboard({ showToast }) {
       })
       .catch(() => {});
   }, [applicant?.schoolId]);
+
+  useEffect(() => {
+    if (current !== 4) return undefined;
+    let active = true;
+    let notified = false;
+    const refreshResult = () => {
+      api.get("/me")
+        .then(({ data }) => {
+          if (active) {
+            notified = false;
+            applyPayload(data);
+          }
+        })
+        .catch((err) => {
+          if (active && !notified) {
+            notified = true;
+            showToast?.("Gagal memuat hasil", err.response?.data?.message || "Tidak dapat memperbarui hasil tes.");
+          }
+        });
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refreshResult();
+    };
+    const timer = window.setInterval(refreshWhenVisible, 30000);
+    window.addEventListener("focus", refreshResult);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshResult);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [current, applyPayload, showToast]);
 
   useEffect(() => {
     if (current !== 5 || applicant?.announcementStatus !== "LULUS") return undefined;

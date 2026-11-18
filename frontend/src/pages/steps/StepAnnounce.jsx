@@ -18,6 +18,9 @@ export default function StepAnnounce({ applicant, applyPayload, showToast, onNex
     MENGUNDURKAN_DIRI: "MENGUNDURKAN DIRI",
   };
   const statusLabel = statusLabels[applicant?.announcementStatus] || "MENUNGGU HASIL TES";
+  const announcementDate = applicant?.announcementDate
+    ? new Date(`${applicant.announcementDate}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+    : "";
   const admissionPackage = applicant?.admissionPackage;
   const formatRp = (amount) => `Rp${Number(amount || 0).toLocaleString("id-ID")}`;
   const [items, setItems] = useState([]);
@@ -81,6 +84,7 @@ export default function StepAnnounce({ applicant, applyPayload, showToast, onNex
           <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-center">
             <span className="text-xs font-bold text-emerald-800 uppercase">Status</span>
             <h3 className="text-lg font-bold text-emerald-900 mt-1">{statusLabel}</h3>
+            {announcementDate ? <p className="mt-1 text-emerald-700">Tanggal pengumuman: {announcementDate}</p> : null}
             {applicant?.amanahSiswaId ? (
               <p className="mt-2 text-emerald-700">Sudah dikirim ke Amanah (ID siswa {applicant.amanahSiswaId}).</p>
             ) : null}
@@ -236,7 +240,7 @@ export default function StepAnnounce({ applicant, applyPayload, showToast, onNex
         {lulus ? (
           <div className="text-center">
             <button type="button" onClick={onNext} className="px-6 py-2.5 bg-sky-600 text-white font-bold rounded-lg shadow">
-              Lanjut Unggah Dokumen <i className="fas fa-arrow-right ml-1" />
+              Lanjut Dokumen dan Validasi Data <i className="fas fa-arrow-right ml-1" />
             </button>
           </div>
         ) : null}
